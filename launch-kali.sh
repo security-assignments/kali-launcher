@@ -122,9 +122,12 @@ ensure_compute_api_enabled() {
   if [[ "$stderr_output" == *"BILLING_NOT_FOUND"* || "$stderr_output" == *"Billing account"* ]]; then
     echo "This project has no billing account linked. In the GCP Console, go to" >&2
     echo "Billing and link a billing account to this project, then run this again." >&2
-  else
-    echo "$stderr_output" >&2
+    echo "" >&2
   fi
+  # Always show gcloud's own error too, even after a friendly summary
+  # above — it often carries specifics (e.g. a direct billing/activation
+  # console link for this exact project) that a generic summary can't.
+  echo "$stderr_output" >&2
   return 1
 }
 
