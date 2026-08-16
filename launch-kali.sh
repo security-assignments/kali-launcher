@@ -94,15 +94,38 @@ delete_existing_instance() {
   return $exit_code
 }
 
+# Returns 0 once the Compute Engine API is confirmed enabled, 1 if
+# enabling it failed — callers must check this before proceeding, since
+# every subsequent create attempt would otherwise fail identically for
+# every candidate zone (found via live testing: an unchecked `gcloud
+# services enable` failure here used to surface 20+ minutes later as a
+# confusing raw PERMISSION_DENIED from `compute instances create`).
 ensure_compute_api_enabled() {
   local enabled
   enabled=$(gcloud services list --enabled \
     --filter="config.name=compute.googleapis.com" \
     --format="value(config.name)")
-  if [[ -z "$enabled" ]]; then
-    echo "Compute Engine API is not enabled yet. Enabling it now (this can take a minute)..." >&2
-    gcloud services enable compute.googleapis.com
+  if [[ -n "$enabled" ]]; then
+    return 0
   fi
+
+  echo "Compute Engine API is not enabled yet. Enabling it now (this can take a minute)..." >&2
+  local stderr_output
+  stderr_output=$(gcloud services enable compute.googleapis.com 2>&1 1>/dev/null)
+  local exit_code=$?
+  if [[ $exit_code -eq 0 ]]; then
+    return 0
+  fi
+
+  echo "" >&2
+  echo "ERROR: Could not enable the Compute Engine API." >&2
+  if [[ "$stderr_output" == *"BILLING_NOT_FOUND"* || "$stderr_output" == *"Billing account"* ]]; then
+    echo "This project has no billing account linked. In the GCP Console, go to" >&2
+    echo "Billing and link a billing account to this project, then run this again." >&2
+  else
+    echo "$stderr_output" >&2
+  fi
+  return 1
 }
 
 CANDIDATE_FEED_URL="https://storage.googleapis.com/security-assignments-kali-stockout-checker/latest-candidates.json"
@@ -452,7 +475,9 @@ main() {
   fi
   echo "Found image: $image" >&2
 
-  ensure_compute_api_enabled
+  if ! ensure_compute_api_enabled; then
+    exit 1
+  fi
 
   build_candidate_shortlist
 
