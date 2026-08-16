@@ -41,6 +41,8 @@ classify_error() {
     echo "QUOTA"
   elif [[ "$stderr_text" == *"does not exist in zone"* ]]; then
     echo "PERMANENT"
+  elif [[ "$stderr_text" =~ Required\ \'[^\']+\'\ permission\ for ]]; then
+    echo "PERMISSION"
   else
     echo "UNKNOWN"
   fi
@@ -286,6 +288,14 @@ run_candidates() {
       DRYRUN)
         :
         ;;
+      PERMISSION)
+        echo "" >&2
+        echo "You don't have permission to create Compute Engine instances in this project." >&2
+        echo "Make sure you're on your own GCP project (not '$IMAGE_PROJECT' — that's the" >&2
+        echo "shared course project the Kali image lives in, not one you have create rights" >&2
+        echo "on) and that you have the Editor or Owner role there." >&2
+        return 2
+        ;;
       UNKNOWN)
         echo "Unexpected error creating instance in $zone — stopping." >&2
         return 2
@@ -389,6 +399,15 @@ main() {
   project=$(gcloud config get-value project 2>/dev/null)
   if [[ -z "$project" ]]; then
     echo "ERROR: No active gcloud project. Run 'gcloud config set project <your-project-id>' first." >&2
+    exit 1
+  fi
+
+  if [[ "$project" == "$IMAGE_PROJECT" ]]; then
+    echo "ERROR: Active project is '$IMAGE_PROJECT' — that's the shared course" >&2
+    echo "project the Kali image lives in, not a project you own. You won't have" >&2
+    echo "permission to create instances there." >&2
+    echo "Select or create your own GCP project instead (see Part 1 of the" >&2
+    echo "intro-to-gcp tutorial), then run this again." >&2
     exit 1
   fi
 

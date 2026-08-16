@@ -13,6 +13,10 @@ with the Google account you used to purchase class lab material access (see
 Part 1 of the
 [Introduction to GCP tutorial](https://security-assignments.com/tutorials/intro-to-gcp.html)).
 
+**Do not select `security-assignments-kali`** — that's the shared course
+project the Kali image itself lives in, and you don't have permission to
+create instances there. Pick or create your own project instead.
+
 ## Run the launcher
 
 This repo was already cloned into your Cloud Shell home directory. Run
