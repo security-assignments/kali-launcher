@@ -15,19 +15,12 @@ Part 1 of the
 
 ## Run the launcher
 
-This repo was already cloned into your Cloud Shell home directory. First,
-point the terminal at the project you just picked above (selecting a
-project here only updates the console — your terminal session needs this
-too):
+This repo was already cloned into your Cloud Shell home directory. Run
+(picking a project above only updates the console, not your terminal
+session, so it's passed in explicitly here):
 
 ```bash
-gcloud config set project <walkthrough-project-id/>
-```
-
-Then run the launcher:
-
-```bash
-./launch-kali.sh
+CLOUDSDK_CORE_PROJECT=<walkthrough-project-id/> ./launch-kali.sh
 ```
 
 It looks up the course's Kali image, enables the Compute Engine API if
