@@ -111,7 +111,7 @@ ensure_compute_api_enabled() {
 
   echo "Compute Engine API is not enabled yet. Enabling it now (this can take a minute)..." >&2
   local stderr_output
-  stderr_output=$(gcloud services enable compute.googleapis.com 2>&1 1>/dev/null)
+  stderr_output=$(gcloud services enable compute.googleapis.com --quiet 2>&1 1>/dev/null)
   local exit_code=$?
   if [[ $exit_code -eq 0 ]]; then
     return 0
@@ -230,7 +230,8 @@ attempt_create() {
     --image="$image"
     --image-project="$IMAGE_PROJECT"
     --boot-disk-type=pd-balanced
-    --enable-nested-virtualization)
+    --enable-nested-virtualization
+    --quiet)
   # No --min-cpu-platform here: GCP rejects "Intel Haswell" for N2
   # machine types (confirmed live during final review — n2-standard-4
   # requires cascadelake), and that error text matches none of
@@ -238,6 +239,18 @@ attempt_create() {
   # halt the whole retry loop. --enable-nested-virtualization alone is
   # sufficient on both N1 and N2 (confirmed live: N1 lands on Broadwell,
   # N2 lands on Cascade Lake, both qualify for nested virt on their own).
+  #
+  # --quiet matters more than usual here: this function captures stderr
+  # into a variable below (invisible to the user) while leaving stdin
+  # attached to the real terminal. Without --quiet, an interactive
+  # confirmation gcloud sometimes issues here — e.g. "API ... not
+  # enabled ... Would you like to enable and retry?", which can fire even
+  # after ensure_compute_api_enabled() succeeds, due to enable-propagation
+  # lag — would print into that captured (invisible) stream while still
+  # blocking on a real stdin read, silently eating the user's next
+  # keystroke as its answer (found via live testing — a stray Enter
+  # answered "N" with no visible prompt at all). --quiet forces gcloud to
+  # fail loud instead, which classify_error() then handles normally.
 
   if [[ "$dry_run" == "true" ]]; then
     echo "DRYRUN: ${cmd[*]}" >&2
