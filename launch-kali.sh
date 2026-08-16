@@ -575,6 +575,18 @@ main() {
     local zone="${winner%%|*}"
     echo "" >&2
     echo "${C_GREEN}${C_BOLD}Kali instance '$INSTANCE_NAME' created in $zone.${C_RESET}" >&2
+    # A direct SSH-in-browser deep link is possible but deliberately not
+    # done: the real URL (confirmed live) is
+    # https://ssh.cloud.google.com/v2/ssh/projects/PROJECT_ID/zones/ZONE/instances/INSTANCE?authuser=0&hl=en_US&projectNumber=PROJECT_NUMBER&useAdminProxy=true
+    # -- undocumented by Google, so no guarantee it's stable. The
+    # structural path (.../instances/INSTANCE, no query string) alone
+    # was confirmed to work live, but authuser=0 hardcodes "your first
+    # signed-in Google account", wrong for anyone whose course account
+    # isn't that one, and projectNumber would need an extra `gcloud
+    # projects describe` call just for a param whose necessity is
+    # unconfirmed. Not worth the fragility for a convenience link when
+    # the instances-list link below already gets students to the same
+    # SSH button in one more click.
     echo "${C_CYAN}Connect via SSH-in-browser:${C_RESET}" >&2
     echo "  ${C_CYAN}https://console.cloud.google.com/compute/instances?project=$project${C_RESET}" >&2
     echo "  or run:" >&2
