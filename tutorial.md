@@ -27,6 +27,11 @@ session, so it's passed in explicitly here):
 CLOUDSDK_CORE_PROJECT=<walkthrough-project-id/> ./launch-kali.sh
 ```
 
+Clicking that only pastes the command into the terminal — it doesn't run it.
+Click into the terminal and press Enter to actually start it (if the
+terminal wasn't already focused, the first Enter may just focus it; press
+it again if nothing happens).
+
 It looks up the course's Kali image, enables the Compute Engine API if
 needed, and tries a shortlist of zones/machine types in order until one
 succeeds — skipping ahead automatically on a capacity stockout.

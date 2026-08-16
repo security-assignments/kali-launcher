@@ -125,9 +125,24 @@ ensure_compute_api_enabled() {
     echo "" >&2
   fi
   # Always show gcloud's own error too, even after a friendly summary
-  # above — it often carries specifics (e.g. a direct billing/activation
-  # console link for this exact project) that a generic summary can't.
+  # above — it often carries specifics a generic summary can't.
   echo "$stderr_output" >&2
+
+  # This error's own text never contains a full clickable activation
+  # link. gcloud does generate one, but only from an actual Compute API
+  # call, as part of its SERVICE_DISABLED response -- so make one, using
+  # a read-only call that can't create anything even if the API somehow
+  # became enabled in the few seconds since the check above (e.g.
+  # enable-propagation catching up): the "is this API enabled" gate is
+  # per-project-per-service, not per-method, so any Compute API call
+  # reproduces the identical error and link.
+  local probe_stderr
+  probe_stderr=$(gcloud compute regions list --limit=1 --quiet 2>&1 1>/dev/null)
+  if [[ -n "$probe_stderr" ]]; then
+    echo "" >&2
+    echo "$probe_stderr" >&2
+  fi
+
   return 1
 }
 
