@@ -139,10 +139,12 @@ delete_existing_instance() {
   fi
 
   echo "Deleting instance '$INSTANCE_NAME' in zone $zone..." >&2
-  gcloud compute instances delete "$INSTANCE_NAME" --zone="$zone" --quiet >&2
+  run_with_dots gcloud compute instances delete "$INSTANCE_NAME" --zone="$zone" --quiet
   local exit_code=$?
   if [[ $exit_code -eq 0 ]]; then
     echo "${C_GREEN}Deleted.${C_RESET}" >&2
+  else
+    echo "$REPLY" >&2
   fi
   return $exit_code
 }
@@ -555,7 +557,7 @@ main() {
     echo "This usually means you're signed in to the wrong Google account — use the @gmail.com account you used to purchase class lab access (see Part 1 of the intro-to-gcp tutorial)." >&2
     exit 1
   fi
-  echo "Found image: $image" >&2
+  echo "${C_GREEN}Found image: $image${C_RESET}" >&2
 
   if ! ensure_compute_api_enabled; then
     exit 1
@@ -573,8 +575,8 @@ main() {
     local zone="${winner%%|*}"
     echo "" >&2
     echo "${C_GREEN}${C_BOLD}Kali instance '$INSTANCE_NAME' created in $zone.${C_RESET}" >&2
-    echo "Connect via SSH-in-browser:" >&2
-    echo "  https://console.cloud.google.com/compute/instances?project=$project" >&2
+    echo "${C_CYAN}Connect via SSH-in-browser:${C_RESET}" >&2
+    echo "  ${C_CYAN}https://console.cloud.google.com/compute/instances?project=$project${C_RESET}" >&2
     echo "  or run: gcloud compute ssh $INSTANCE_NAME --zone=$zone" >&2
     exit 0
   else
