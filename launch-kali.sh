@@ -577,7 +577,7 @@ main() {
     echo "${C_GREEN}${C_BOLD}Kali instance '$INSTANCE_NAME' created in $zone.${C_RESET}" >&2
     echo "${C_CYAN}Connect via SSH-in-browser:${C_RESET}" >&2
     echo "  ${C_CYAN}https://console.cloud.google.com/compute/instances?project=$project${C_RESET}" >&2
-    echo "  or run: gcloud compute ssh $INSTANCE_NAME --zone=$zone" >&2
+    echo "  or run: CLOUDSDK_CORE_PROJECT=$project gcloud compute ssh $INSTANCE_NAME --zone=$zone" >&2
     exit 0
   else
     exit 1
