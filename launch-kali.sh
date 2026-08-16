@@ -8,6 +8,25 @@
 # checks instead.
 set -uo pipefail
 
+# Colors only when stderr (where nearly all of this script's output goes)
+# is a real terminal, and NO_COLOR isn't set — this script is also meant
+# to run via `curl | bash`, where raw escape codes would otherwise land in
+# a pipe/log instead of a terminal.
+if [[ -t 2 && -z "${NO_COLOR:-}" ]]; then
+  C_RED=$'\033[31m'
+  C_GREEN=$'\033[32m'
+  C_YELLOW=$'\033[33m'
+  C_CYAN=$'\033[36m'
+  C_BOLD=$'\033[1m'
+  C_RESET=$'\033[0m'
+else
+  C_RED="" C_GREEN="" C_YELLOW="" C_CYAN="" C_BOLD="" C_RESET=""
+fi
+
+err() {
+  echo "${C_RED}${C_BOLD}ERROR:${C_RESET} $*" >&2
+}
+
 IMAGE_PROJECT="security-assignments-kali"
 IMAGE_FAMILY="security-assignments-kali"
 INSTANCE_NAME="kali"
@@ -48,6 +67,40 @@ classify_error() {
   fi
 }
 
+# How often run_with_dots() prints a "." while waiting, in seconds.
+# Overridable so tests can exercise the real polling logic without a real
+# wall-clock wait.
+DOTS_INTERVAL="${DOTS_INTERVAL:-0.5}"
+
+# Runs "$@" in the background, printing a growing "..." to stderr every
+# DOTS_INTERVAL while it's still running — gcloud calls here can take
+# 10-20+ seconds with zero output otherwise, which looks hung (found via
+# live testing). stdout is discarded; stderr is captured into $REPLY
+# (following `read`'s convention, since callers need both the exit code
+# and the captured text — a `local out=$(run_with_dots ...)` would put
+# this function in a subshell and lose direct access to $!/wait). Returns
+# the command's own exit code.
+run_with_dots() {
+  local stderr_file
+  stderr_file=$(mktemp)
+  "$@" >/dev/null 2>"$stderr_file" &
+  local pid=$!
+
+  local printed_dot="false"
+  while kill -0 "$pid" 2>/dev/null; do
+    echo -n "." >&2
+    printed_dot="true"
+    sleep "$DOTS_INTERVAL"
+  done
+  [[ "$printed_dot" == "true" ]] && echo "" >&2
+
+  wait "$pid"
+  local exit_code=$?
+  REPLY=$(<"$stderr_file")
+  rm -f "$stderr_file"
+  return $exit_code
+}
+
 resolve_kali_image() {
   gcloud compute images list \
     --project="$IMAGE_PROJECT" \
@@ -73,7 +126,7 @@ delete_existing_instance() {
   IFS=$'\t' read -r _ zone _ <<< "$existing"
 
   if [[ "$force" != "true" ]]; then
-    echo "This will permanently delete instance '$INSTANCE_NAME' in zone $zone." >&2
+    echo "${C_YELLOW}This will permanently delete instance '$INSTANCE_NAME' in zone $zone.${C_RESET}" >&2
     local reply
     read -r -p "Delete this instance? [y/N] " reply
     case "$reply" in
@@ -89,7 +142,7 @@ delete_existing_instance() {
   gcloud compute instances delete "$INSTANCE_NAME" --zone="$zone" --quiet >&2
   local exit_code=$?
   if [[ $exit_code -eq 0 ]]; then
-    echo "Deleted." >&2
+    echo "${C_GREEN}Deleted.${C_RESET}" >&2
   fi
   return $exit_code
 }
@@ -110,18 +163,18 @@ ensure_compute_api_enabled() {
   fi
 
   echo "Compute Engine API is not enabled yet. Enabling it now (this can take a minute)..." >&2
-  local stderr_output
-  stderr_output=$(gcloud services enable compute.googleapis.com --quiet 2>&1 1>/dev/null)
+  run_with_dots gcloud services enable compute.googleapis.com --quiet
   local exit_code=$?
+  local stderr_output="$REPLY"
   if [[ $exit_code -eq 0 ]]; then
     return 0
   fi
 
   echo "" >&2
-  echo "ERROR: Could not enable the Compute Engine API." >&2
+  err "Could not enable the Compute Engine API."
   if [[ "$stderr_output" == *"BILLING_NOT_FOUND"* || "$stderr_output" == *"Billing account"* ]]; then
-    echo "This project has no billing account linked. In the GCP Console, go to" >&2
-    echo "Billing and link a billing account to this project, then run this again." >&2
+    echo "${C_YELLOW}This project has no billing account linked. In the GCP Console, go to" >&2
+    echo "Billing and link a billing account to this project, then run this again.${C_RESET}" >&2
     echo "" >&2
   fi
   # Always show gcloud's own error too, even after a friendly summary
@@ -276,11 +329,9 @@ attempt_create() {
     return 0
   fi
 
-  # Two-step exit-code capture: `local stderr_output=$(...)` on one line
-  # would overwrite $? with `local`'s own status before we could read it.
-  local stderr_output
-  stderr_output=$("${cmd[@]}" 2>&1 1>/dev/null)
+  run_with_dots "${cmd[@]}"
   local exit_code=$?
+  local stderr_output="$REPLY"
 
   if [[ $exit_code -eq 0 ]]; then
     echo "SUCCESS"
@@ -315,11 +366,11 @@ run_candidates() {
 
     if [[ "$skip_regions" == *" $region "* ]]; then
       attempts+=("$zone|$machine_type|QUOTA_SKIPPED")
-      echo "Skipping $zone ($machine_type) — $region already hit a quota limit" >&2
+      echo "${C_YELLOW}Skipping $zone ($machine_type) — $region already hit a quota limit${C_RESET}" >&2
       continue
     fi
 
-    echo "Trying $zone ($machine_type)..." >&2
+    echo "${C_CYAN}${C_BOLD}Trying $zone ($machine_type)...${C_RESET}" >&2
     local result
     result=$(attempt_create "$zone" "$machine_type" "$image" "$dry_run")
     attempts+=("$zone|$machine_type|$result")
@@ -330,28 +381,28 @@ run_candidates() {
         return 0
         ;;
       QUOTA)
-        echo "  quota exceeded in $region — skipping remaining $region candidates" >&2
+        echo "${C_YELLOW}  quota exceeded in $region — skipping remaining $region candidates${C_RESET}" >&2
         skip_regions="$skip_regions$region "
         ;;
       STOCKOUT)
-        echo "  stockout, trying next candidate" >&2
+        echo "${C_YELLOW}  stockout, trying next candidate${C_RESET}" >&2
         ;;
       PERMANENT)
-        echo "  not offered in this zone, trying next candidate" >&2
+        echo "${C_YELLOW}  not offered in this zone, trying next candidate${C_RESET}" >&2
         ;;
       DRYRUN)
         :
         ;;
       PERMISSION)
         echo "" >&2
-        echo "You don't have permission to create Compute Engine instances in this project." >&2
+        err "You don't have permission to create Compute Engine instances in this project."
         echo "Make sure you're on your own GCP project (not '$IMAGE_PROJECT' — that's the" >&2
         echo "shared course project the Kali image lives in, not one you have create rights" >&2
         echo "on) and that you have the Editor or Owner role there." >&2
         return 2
         ;;
       UNKNOWN)
-        echo "Unexpected error creating instance in $zone — stopping." >&2
+        err "Unexpected error creating instance in $zone — stopping."
         return 2
         ;;
     esac
@@ -362,7 +413,7 @@ run_candidates() {
   fi
 
   echo "" >&2
-  echo "Every candidate failed:" >&2
+  echo "${C_YELLOW}${C_BOLD}Every candidate failed:${C_RESET}" >&2
   local attempt
   for attempt in "${attempts[@]}"; do
     echo "  $attempt" >&2
@@ -427,7 +478,7 @@ main() {
         force="true"
         ;;
       *)
-        echo "ERROR: unknown argument: $arg" >&2
+        err "unknown argument: $arg"
         echo "Run with --help to see available options." >&2
         exit 1
         ;;
@@ -435,29 +486,29 @@ main() {
   done
 
   if [[ "$dry_run" == "true" && ( "$delete_only" == "true" || "$recreate" == "true" ) ]]; then
-    echo "ERROR: --dry-run cannot be combined with --delete-only or --recreate." >&2
+    err "--dry-run cannot be combined with --delete-only or --recreate."
     exit 1
   fi
 
   if [[ "$delete_only" == "true" && "$recreate" == "true" ]]; then
-    echo "ERROR: --delete-only and --recreate cannot be used together." >&2
+    err "--delete-only and --recreate cannot be used together."
     exit 1
   fi
 
   if ! command -v gcloud >/dev/null 2>&1; then
-    echo "ERROR: gcloud CLI not found. Run this in Cloud Shell, or install the Google Cloud CLI first." >&2
+    err "gcloud CLI not found. Run this in Cloud Shell, or install the Google Cloud CLI first."
     exit 1
   fi
 
   local project
   project=$(gcloud config get-value project 2>/dev/null)
   if [[ -z "$project" ]]; then
-    echo "ERROR: No active gcloud project. Run 'gcloud config set project <your-project-id>' first." >&2
+    err "No active gcloud project. Run 'gcloud config set project <your-project-id>' first."
     exit 1
   fi
 
   if [[ "$project" == "$IMAGE_PROJECT" ]]; then
-    echo "ERROR: Active project is '$IMAGE_PROJECT' — that's the shared course" >&2
+    err "Active project is '$IMAGE_PROJECT' — that's the shared course"
     echo "project the Kali image lives in, not a project you own. You won't have" >&2
     echo "permission to create instances there." >&2
     echo "Select or create your own GCP project instead (see Part 1 of the" >&2
@@ -500,7 +551,7 @@ main() {
   local image
   image=$(resolve_kali_image)
   if [[ -z "$image" ]]; then
-    echo "ERROR: Could not find the Kali image (project=$IMAGE_PROJECT, family=$IMAGE_FAMILY)." >&2
+    err "Could not find the Kali image (project=$IMAGE_PROJECT, family=$IMAGE_FAMILY)."
     echo "This usually means you're signed in to the wrong Google account — use the @gmail.com account you used to purchase class lab access (see Part 1 of the intro-to-gcp tutorial)." >&2
     exit 1
   fi
@@ -521,7 +572,7 @@ main() {
     fi
     local zone="${winner%%|*}"
     echo "" >&2
-    echo "Kali instance '$INSTANCE_NAME' created in $zone." >&2
+    echo "${C_GREEN}${C_BOLD}Kali instance '$INSTANCE_NAME' created in $zone.${C_RESET}" >&2
     echo "Connect via SSH-in-browser:" >&2
     echo "  https://console.cloud.google.com/compute/instances?project=$project" >&2
     echo "  or run: gcloud compute ssh $INSTANCE_NAME --zone=$zone" >&2
