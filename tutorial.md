@@ -15,7 +15,16 @@ Part 1 of the
 
 ## Run the launcher
 
-This repo was already cloned into your Cloud Shell home directory. Run:
+This repo was already cloned into your Cloud Shell home directory. First,
+point the terminal at the project you just picked above (selecting a
+project here only updates the console — your terminal session needs this
+too):
+
+```bash
+gcloud config set project <walkthrough-project-id/>
+```
+
+Then run the launcher:
 
 ```bash
 ./launch-kali.sh
