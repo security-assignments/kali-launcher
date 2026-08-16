@@ -42,6 +42,17 @@ Once it finishes, it prints a zone and a ready-to-run `gcloud compute ssh`
 command, or connect via SSH-in-browser from the
 [Compute Engine instances page](https://console.cloud.google.com/compute/instances).
 
+## Set this as your default project
+
+The project picker above only affects the console — it's still worth
+setting as your terminal's default too, so any other `gcloud` commands you
+run later in this session (or a future one) don't need it passed in
+explicitly:
+
+```bash
+gcloud config set project <walkthrough-project-id/>
+```
+
 <walkthrough-conclusion-trophy></walkthrough-conclusion-trophy>
 
 You're done! Continue with Part 4 of the
