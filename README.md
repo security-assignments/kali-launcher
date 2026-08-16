@@ -1,6 +1,6 @@
 # kali-launcher
 
-[![Open in Cloud Shell](https://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/open?cloudshell_git_repo=https://github.com/security-assignments/kali-launcher&cloudshell_open_in_editor=launch-kali.sh)
+[![Open in Cloud Shell](https://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/open?cloudshell_git_repo=https://github.com/security-assignments/kali-launcher&cloudshell_tutorial=tutorial.md)
 
 Creates the security-assignments course's Kali GCP instance from Cloud
 Shell, retrying across a shortlist of zones/machine-types if you hit a
