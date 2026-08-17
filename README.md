@@ -19,7 +19,7 @@ Click "Open in Cloud Shell" above, or paste this into
 Cloud Shell already has everything this script needs):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/security-assignments/kali-launcher/main/launch-kali.sh | bash
+curl -fsSL "https://raw.githubusercontent.com/security-assignments/kali-launcher/main/launch-kali.sh?$(date +%s)" | bash
 ```
 
 Or, to read the script before running it:
@@ -58,7 +58,7 @@ skip the prompt.
 If you're using the `curl | bash` one-liner, pass options after `-s --`:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/security-assignments/kali-launcher/main/launch-kali.sh | bash -s -- --dry-run
+curl -fsSL "https://raw.githubusercontent.com/security-assignments/kali-launcher/main/launch-kali.sh?$(date +%s)" | bash -s -- --dry-run
 ```
 
 ## What it doesn't do
