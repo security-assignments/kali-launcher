@@ -216,7 +216,7 @@ CANDIDATE_FEED_URL="https://storage.googleapis.com/security-assignments-kali-sto
 # Fetches and parses kali-stockout-checker's public candidate feed.
 # On success: prints zero or more "zone<TAB>machine_type" lines to stdout
 # (filtered to supported -standard-4 machine types with is_available == 1,
-# sorted with n1/n2 before c3, then by last_checked DESC) and returns 0.
+# sorted n2 before n1 before c3, then by last_checked DESC) and returns 0.
 # On any failure (network, empty body, malformed/unexpected JSON): prints
 # nothing and returns 1. Never fatal to the caller — see
 # build_candidate_shortlist().
@@ -242,10 +242,10 @@ try:
         and c.get("is_available") == 1
         and c.get("family") in ("n1", "n2", "c3")
     ]
-    # Stable two-pass sort: newest first within each priority tier, while
-    # keeping C3 behind N1/N2 because student C3 quota is less predictable.
+    # Stable two-pass sort: newest first within each family tier, with N2
+    # preferred over N1 and C3 last because student C3 quota is less predictable.
     filtered.sort(key=lambda c: c["last_checked"], reverse=True)
-    filtered.sort(key=lambda c: c["family"] == "c3")
+    filtered.sort(key=lambda c: {"n2": 0, "n1": 1, "c3": 2}[c["family"]])
     for c in filtered:
         print(c["zone"] + "\t" + c["machine_type"])
 except Exception:
@@ -376,13 +376,13 @@ attempt_create() {
 
 run_candidates() {
   local image="$1" dry_run="$2"
-  # Space-padded string used as a simple set of regions to skip — a plain
-  # scalar here is a real bug (found in task-8 review): the real shortlist
+  # Space-padded string used as a simple set of region/family keys to skip.
+  # A plain scalar here is a real bug (found in task-8 review): the real shortlist
   # has non-adjacent duplicate regions (us-east4 at index 1 and 3, us-west1
   # at index 2 and 5), so a run that hits QUOTA in two different regions
   # would forget the first region's skip once the second overwrote a
   # scalar, redundantly re-attempting a candidate already known to fail.
-  local skip_regions=" "
+  local skip_quota_pools=" "
   local attempts=()
   local i
 
@@ -391,10 +391,12 @@ run_candidates() {
     local machine_type="${CANDIDATE_MACHINE_TYPES[$i]}"
     local region
     region=$(region_of "$zone")
+    local family="${machine_type%%-*}"
+    local quota_key="$region/$family"
 
-    if [[ "$skip_regions" == *" $region "* ]]; then
+    if [[ "$skip_quota_pools" == *" $quota_key "* ]]; then
       attempts+=("$zone|$machine_type|QUOTA_SKIPPED")
-      echo "${C_YELLOW}Skipping $zone ($machine_type) — $region already hit a quota limit${C_RESET}" >&2
+      echo "${C_YELLOW}Skipping $zone ($machine_type) — $family already hit a quota limit in $region${C_RESET}" >&2
       continue
     fi
 
@@ -409,8 +411,8 @@ run_candidates() {
         return 0
         ;;
       QUOTA)
-        echo "${C_YELLOW}  quota exceeded in $region — skipping remaining $region candidates${C_RESET}" >&2
-        skip_regions="$skip_regions$region "
+        echo "${C_YELLOW}  $family quota exceeded in $region — skipping remaining $family candidates there${C_RESET}" >&2
+        skip_quota_pools="$skip_quota_pools$quota_key "
         ;;
       STOCKOUT)
         echo "${C_YELLOW}  stockout, trying next candidate${C_RESET}" >&2
