@@ -112,9 +112,17 @@ run_with_dots() {
 }
 
 resolve_kali_image() {
+  local image_name="${1:-}"
+  local image_family="${2:-$IMAGE_FAMILY}"
+  if [[ -n "$image_name" ]]; then
+    gcloud compute images describe "$image_name" \
+      --project="$IMAGE_PROJECT" \
+      --format="value(name)"
+    return
+  fi
   gcloud compute images list \
     --project="$IMAGE_PROJECT" \
-    --filter="family=$IMAGE_FAMILY" \
+    --filter="family=$image_family" \
     --format="value(name)" \
     --sort-by=~creationTimestamp \
     --limit=1
@@ -472,6 +480,9 @@ print_help() {
   echo "                  create a new one."
   echo "  --force         Skip the confirmation prompt when deleting. Used with"
   echo "                  --delete-only or --recreate."
+  echo "  --image NAME    Use an exact image from project '$IMAGE_PROJECT'."
+  echo "  --image-family FAMILY"
+  echo "                  Use the newest image in a different image family."
   echo "  --help, -h      Show this help message and exit."
   echo ""
   echo "Examples:"
@@ -480,6 +491,7 @@ print_help() {
   echo "  ./launch-kali.sh --delete-only       Delete the existing instance"
   echo "  ./launch-kali.sh --recreate          Delete and recreate the instance"
   echo "  ./launch-kali.sh --recreate --force  Delete and recreate without a confirmation prompt"
+  echo "  ./launch-kali.sh --image-family kali-fai-base-testing"
 }
 
 main() {
@@ -487,10 +499,12 @@ main() {
   local delete_only="false"
   local recreate="false"
   local force="false"
+  local image_override=""
+  local image_family_override="$IMAGE_FAMILY"
+  local image_family_was_set="false"
 
-  local arg
-  for arg in "$@"; do
-    case "$arg" in
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
       --help | -h)
         print_help
         exit 0
@@ -507,13 +521,39 @@ main() {
       --force)
         force="true"
         ;;
+      --image=*)
+        image_override="${1#*=}"
+        [[ -n "$image_override" ]] || { err "--image requires a non-empty image name."; exit 1; }
+        ;;
+      --image)
+        [[ $# -ge 2 && -n "$2" ]] || { err "--image requires an image name."; exit 1; }
+        image_override="$2"
+        shift
+        ;;
+      --image-family=*)
+        image_family_override="${1#*=}"
+        [[ -n "$image_family_override" ]] || { err "--image-family requires a non-empty family name."; exit 1; }
+        image_family_was_set="true"
+        ;;
+      --image-family)
+        [[ $# -ge 2 && -n "$2" ]] || { err "--image-family requires a family name."; exit 1; }
+        image_family_override="$2"
+        image_family_was_set="true"
+        shift
+        ;;
       *)
-        err "unknown argument: $arg"
+        err "unknown argument: $1"
         echo "Run with --help to see available options." >&2
         exit 1
         ;;
     esac
+    shift
   done
+
+  if [[ -n "$image_override" && "$image_family_was_set" == "true" ]]; then
+    err "--image and --image-family cannot be used together."
+    exit 1
+  fi
 
   if [[ "$dry_run" == "true" && ( "$delete_only" == "true" || "$recreate" == "true" ) ]]; then
     err "--dry-run cannot be combined with --delete-only or --recreate."
@@ -579,9 +619,13 @@ main() {
 
   echo "Looking up the Kali image..." >&2
   local image
-  image=$(resolve_kali_image)
+  image=$(resolve_kali_image "$image_override" "$image_family_override")
   if [[ -z "$image" ]]; then
-    err "Could not find the Kali image (project=$IMAGE_PROJECT, family=$IMAGE_FAMILY)."
+    if [[ -n "$image_override" ]]; then
+      err "Could not find the Kali image (project=$IMAGE_PROJECT, image=$image_override)."
+    else
+      err "Could not find the Kali image (project=$IMAGE_PROJECT, family=$image_family_override)."
+    fi
     echo "This usually means you're signed in to the wrong Google account — use the @gmail.com account you used to purchase class lab access (see Part 1 of the intro-to-gcp tutorial)." >&2
     exit 1
   fi

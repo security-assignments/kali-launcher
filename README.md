@@ -49,6 +49,8 @@ cd kali-launcher
 ./launch-kali.sh --dry-run       # preview what would be created, without creating anything
 ./launch-kali.sh --delete-only   # delete the existing instance and exit
 ./launch-kali.sh --recreate      # delete the existing instance (if any), then create a new one
+./launch-kali.sh --image NAME    # use an exact image from the shared course project
+./launch-kali.sh --image-family FAMILY  # use the newest image in another family
 ```
 
 `--delete-only` and `--recreate` ask for confirmation before deleting
