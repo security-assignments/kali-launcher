@@ -37,8 +37,18 @@ INSTANCE_NAME="kali"
 # safety net (see build_candidate_shortlist(), below) when the live
 # candidate feed can't be fetched or parsed — this list will go stale over
 # time; it's a snapshot, not a guarantee.
-FALLBACK_ZONES=(us-east1-b us-east4-a us-west1-a us-east4-a us-south1-a us-west1-b)
-FALLBACK_MACHINE_TYPES=(n1-standard-4 n1-standard-4 n1-standard-4 n2-standard-4 n2-standard-4 n2-standard-4)
+#
+# The three c3-standard-4 entries were added 2026-08-17, requiring
+# kali-v5-0-3+ (the first image build with the GVNIC guest-os-feature — see
+# labs/errata.md in security-assignments.github.io). Zones chosen from
+# kali-stockout-checker's `stockout_probes` BigQuery table, filtering to
+# real ZONE_RESOURCE_POOL_EXHAUSTED signal (excluding QUOTA_EXCEEDED/
+# QUOTA_COOLDOWN_SKIPPED noise, which dominates the raw row count for this
+# machine type — the project's C3 quota gets exhausted far more often than
+# real stockouts occur) and picking one clean, high-success zone per
+# region for resilience against a single region's quota exhaustion.
+FALLBACK_ZONES=(us-east1-b us-east4-a us-west1-a us-east4-a us-south1-a us-west1-b us-west3-b us-west4-a us-east1-c)
+FALLBACK_MACHINE_TYPES=(n1-standard-4 n1-standard-4 n1-standard-4 n2-standard-4 n2-standard-4 n2-standard-4 c3-standard-4 c3-standard-4 c3-standard-4)
 
 # CANDIDATE_ZONES/CANDIDATE_MACHINE_TYPES are what run_candidates() actually
 # reads. Default to the fallback list so anything that sources this script
@@ -205,8 +215,8 @@ CANDIDATE_FEED_URL="https://storage.googleapis.com/security-assignments-kali-sto
 
 # Fetches and parses kali-stockout-checker's public candidate feed.
 # On success: prints zero or more "zone<TAB>machine_type" lines to stdout
-# (filtered to -standard-4 machine types with is_available == 1, sorted
-# by family DESC then last_checked DESC) and returns 0.
+# (filtered to supported -standard-4 machine types with is_available == 1,
+# sorted with n1/n2 before c3, then by last_checked DESC) and returns 0.
 # On any failure (network, empty body, malformed/unexpected JSON): prints
 # nothing and returns 1. Never fatal to the caller — see
 # build_candidate_shortlist().
@@ -230,8 +240,12 @@ try:
         c for c in candidates
         if str(c.get("machine_type", "")).endswith("-standard-4")
         and c.get("is_available") == 1
+        and c.get("family") in ("n1", "n2", "c3")
     ]
-    filtered.sort(key=lambda c: (c["family"], c["last_checked"]), reverse=True)
+    # Stable two-pass sort: newest first within each priority tier, while
+    # keeping C3 behind N1/N2 because student C3 quota is less predictable.
+    filtered.sort(key=lambda c: c["last_checked"], reverse=True)
+    filtered.sort(key=lambda c: c["family"] == "c3")
     for c in filtered:
         print(c["zone"] + "\t" + c["machine_type"])
 except Exception:
@@ -305,6 +319,18 @@ attempt_create() {
     --boot-disk-type=pd-balanced
     --enable-nested-virtualization
     --quiet)
+
+  # c3 (and any future third-generation-and-later family, e.g. c4/n4) is
+  # gVNIC-only — virtio-net isn't offered at all, confirmed via GCP's
+  # machine-comparison table. Requires kali-v5-0-3+ (first image built with
+  # the GVNIC guest-os-feature). Confirmed live this doesn't change N1/N2
+  # behavior: leaving nic-type unset on those still defaults to virtio-net
+  # even on a GVNIC-tagged image, so this is scoped to c3 only rather than
+  # applied unconditionally.
+  if [[ "$machine_type" == c3-* ]]; then
+    cmd+=(--network-interface=nic-type=GVNIC)
+  fi
+
   # No --min-cpu-platform here: GCP rejects "Intel Haswell" for N2
   # machine types (confirmed live during final review — n2-standard-4
   # requires cascadelake), and that error text matches none of
