@@ -51,6 +51,7 @@ bash kali-launcher.sh --install-and-run
 
 ```bash
 kali-launcher --help          # show all options
+kali-launcher --version       # show the installed launcher version
 kali-launcher --self-update   # update the launcher itself, not the Kali instance
 kali-launcher --dry-run       # preview without creating anything
 kali-launcher --delete-only   # delete the existing instance and exit

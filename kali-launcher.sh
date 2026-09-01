@@ -8,6 +8,7 @@
 # checks instead.
 set -uo pipefail
 
+LAUNCHER_VERSION="0.3.4"
 LAUNCHER_DOWNLOAD_URL="${LAUNCHER_DOWNLOAD_URL:-https://raw.githubusercontent.com/security-assignments/kali-launcher/refs/heads/main/kali-launcher.sh}"
 LAUNCHER_INSTALL_DIR="${LAUNCHER_INSTALL_DIR:-${HOME}/.local/bin}"
 LAUNCHER_INSTALL_PATH="${LAUNCHER_INSTALL_PATH:-${LAUNCHER_INSTALL_DIR}/kali-launcher}"
@@ -573,6 +574,7 @@ print_help() {
   echo "                  Install the managed launcher and run it immediately."
   echo "  --self-update   Update the managed launcher itself, then exit. Does not"
   echo "                  update or modify the Kali instance."
+  echo "  --version       Show the launcher version and exit."
   echo "  --help, -h      Show this help message and exit."
   echo ""
   echo "Examples:"
@@ -597,6 +599,10 @@ main() {
     case "$1" in
       --help | -h)
         print_help
+        exit 0
+        ;;
+      --version)
+        echo "kali-launcher $LAUNCHER_VERSION"
         exit 0
         ;;
       --dry-run)
