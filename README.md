@@ -20,11 +20,11 @@ Click "Open in Cloud Shell" above, or paste these commands into
 ```bash
 curl -fsSLO "https://raw.githubusercontent.com/security-assignments/kali-launcher/main/kali-launcher.sh?$(date +%s)"
 bash kali-launcher.sh --install
-kali-launcher
+~/.local/bin/kali-launcher
 ```
 
-This installs a managed copy at `~/.local/bin/kali-launcher`. The installer
-tells you exactly what to do if that directory is not already in `PATH`.
+This installs a managed copy at `~/.local/bin/kali-launcher`. Use that full
+path in Cloud Shell; its `~/.local/bin` directory is not on `PATH` by default.
 
 Or clone the repository if you want to inspect the script first:
 
@@ -32,7 +32,7 @@ Or clone the repository if you want to inspect the script first:
 git clone https://github.com/security-assignments/kali-launcher
 cd kali-launcher
 bash kali-launcher.sh --install
-kali-launcher
+~/.local/bin/kali-launcher
 ```
 
 ## What it does
@@ -51,13 +51,13 @@ kali-launcher
 ## Options
 
 ```bash
-kali-launcher --help          # show all options
-kali-launcher --self-update   # update the launcher itself, not the Kali instance
-kali-launcher --dry-run       # preview what would be created, without creating anything
-kali-launcher --delete-only   # delete the existing instance and exit
-kali-launcher --recreate      # delete the existing instance (if any), then create a new one
-kali-launcher --image NAME    # use an exact image from the shared course project
-kali-launcher --image-family FAMILY  # use the newest image in another family
+~/.local/bin/kali-launcher --help          # show all options
+~/.local/bin/kali-launcher --self-update   # update the launcher itself, not the Kali instance
+~/.local/bin/kali-launcher --dry-run       # preview without creating anything
+~/.local/bin/kali-launcher --delete-only   # delete the existing instance and exit
+~/.local/bin/kali-launcher --recreate      # delete and recreate the instance
+~/.local/bin/kali-launcher --image NAME    # use an exact shared course image
+~/.local/bin/kali-launcher --image-family FAMILY  # use another image family
 ```
 
 `--delete-only` and `--recreate` ask for confirmation before deleting

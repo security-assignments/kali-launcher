@@ -528,7 +528,7 @@ install_launcher() {
   case ":$PATH:" in
     *":${LAUNCHER_INSTALL_DIR}:"*) ;;
     *)
-      echo "Add '$LAUNCHER_INSTALL_DIR' to PATH, then run: kali-launcher" >&2
+      echo "Run it with: $LAUNCHER_INSTALL_PATH" >&2
       ;;
   esac
 }
@@ -566,7 +566,8 @@ print_help() {
   echo "  kali-launcher --delete-only       Delete the existing instance"
   echo "  kali-launcher --recreate          Delete and recreate the instance"
   echo "  kali-launcher --recreate --force  Delete and recreate without a confirmation prompt"
-  echo "  kali-launcher --self-update       Update this launcher, not the Kali instance"
+  echo "  ~/.local/bin/kali-launcher --self-update"
+  echo "                                    Update this launcher, not the Kali instance"
 }
 
 main() {

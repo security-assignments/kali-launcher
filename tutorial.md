@@ -25,7 +25,7 @@ session, so it's passed in explicitly here):
 
 ```bash
 CLOUDSDK_CORE_PROJECT=<walkthrough-project-id/> bash kali-launcher.sh --install
-CLOUDSDK_CORE_PROJECT=<walkthrough-project-id/> kali-launcher
+CLOUDSDK_CORE_PROJECT=<walkthrough-project-id/> ~/.local/bin/kali-launcher
 ```
 
 Clicking that only pastes the command into the terminal — it doesn't run it.
