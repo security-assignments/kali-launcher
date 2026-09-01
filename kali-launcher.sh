@@ -8,7 +8,7 @@
 # checks instead.
 set -uo pipefail
 
-LAUNCHER_DOWNLOAD_URL="${LAUNCHER_DOWNLOAD_URL:-https://raw.githubusercontent.com/security-assignments/kali-launcher/main/kali-launcher.sh}"
+LAUNCHER_DOWNLOAD_URL="${LAUNCHER_DOWNLOAD_URL:-https://raw.githubusercontent.com/security-assignments/kali-launcher/refs/heads/main/kali-launcher.sh}"
 LAUNCHER_INSTALL_DIR="${LAUNCHER_INSTALL_DIR:-${HOME}/.local/bin}"
 LAUNCHER_INSTALL_PATH="${LAUNCHER_INSTALL_PATH:-${LAUNCHER_INSTALL_DIR}/kali-launcher}"
 

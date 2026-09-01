@@ -18,7 +18,7 @@ Click "Open in Cloud Shell" above, or paste these commands into
 [Cloud Shell](https://console.cloud.google.com):
 
 ```bash
-curl -fsSLO "https://raw.githubusercontent.com/security-assignments/kali-launcher/main/kali-launcher.sh?$(date +%s)"
+curl -fsSLO "https://raw.githubusercontent.com/security-assignments/kali-launcher/refs/heads/main/kali-launcher.sh?$(date +%s)"
 bash kali-launcher.sh --install
 ~/.local/bin/kali-launcher
 ```
@@ -67,7 +67,7 @@ skip the prompt.
 You can still run the current published version without installing it:
 
 ```bash
-curl -fsSL "https://raw.githubusercontent.com/security-assignments/kali-launcher/main/kali-launcher.sh?$(date +%s)" | bash -s -- --dry-run
+curl -fsSL "https://raw.githubusercontent.com/security-assignments/kali-launcher/refs/heads/main/kali-launcher.sh?$(date +%s)" | bash -s -- --dry-run
 ```
 
 ## What it doesn't do
