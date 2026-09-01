@@ -11,6 +11,7 @@ set -uo pipefail
 LAUNCHER_DOWNLOAD_URL="${LAUNCHER_DOWNLOAD_URL:-https://raw.githubusercontent.com/security-assignments/kali-launcher/refs/heads/main/kali-launcher.sh}"
 LAUNCHER_INSTALL_DIR="${LAUNCHER_INSTALL_DIR:-${HOME}/.local/bin}"
 LAUNCHER_INSTALL_PATH="${LAUNCHER_INSTALL_PATH:-${LAUNCHER_INSTALL_DIR}/kali-launcher}"
+LAUNCHER_SHELL_RC="${LAUNCHER_SHELL_RC:-${HOME}/.bashrc}"
 
 # Colors only when stderr (where nearly all of this script's output goes)
 # is a real terminal, and NO_COLOR isn't set — this script is also meant
@@ -525,12 +526,24 @@ install_launcher() {
     echo "Installed kali-launcher at $LAUNCHER_INSTALL_PATH." >&2
   fi
 
-  case ":$PATH:" in
-    *":${LAUNCHER_INSTALL_DIR}:"*) ;;
-    *)
-      echo "Run it with: $LAUNCHER_INSTALL_PATH" >&2
-      ;;
-  esac
+}
+
+configure_launcher_path() {
+  if [[ ":$PATH:" == *":${LAUNCHER_INSTALL_DIR}:"* ]]; then
+    return 0
+  fi
+
+  local marker="# Added by kali-launcher"
+  if [[ -f "$LAUNCHER_SHELL_RC" ]] && grep -Fqx "$marker" "$LAUNCHER_SHELL_RC"; then
+    return 0
+  fi
+
+  if ! printf '\n%s\nexport PATH="%s:$PATH"\n' "$marker" "$LAUNCHER_INSTALL_DIR" >> "$LAUNCHER_SHELL_RC"; then
+    err "Installed the launcher, but could not update '$LAUNCHER_SHELL_RC'."
+    return 1
+  fi
+
+  echo "Added '$LAUNCHER_INSTALL_DIR' to PATH for future Cloud Shell sessions." >&2
 }
 
 print_help() {
@@ -555,7 +568,9 @@ print_help() {
   echo "  --image-family FAMILY"
   echo "                  Use the newest image in a different image family."
   echo "  --install       Install the managed launcher at ~/.local/bin/kali-launcher"
-  echo "                  and exit."
+  echo "                  and add ~/.local/bin to PATH for future shell sessions."
+  echo "  --install-and-run"
+  echo "                  Install the managed launcher and run it immediately."
   echo "  --self-update   Update the managed launcher itself, then exit. Does not"
   echo "                  update or modify the Kali instance."
   echo "  --help, -h      Show this help message and exit."
@@ -566,8 +581,7 @@ print_help() {
   echo "  kali-launcher --delete-only       Delete the existing instance"
   echo "  kali-launcher --recreate          Delete and recreate the instance"
   echo "  kali-launcher --recreate --force  Delete and recreate without a confirmation prompt"
-  echo "  ~/.local/bin/kali-launcher --self-update"
-  echo "                                    Update this launcher, not the Kali instance"
+  echo "  kali-launcher --self-update       Update this launcher, not the Kali instance"
 }
 
 main() {
@@ -589,8 +603,13 @@ main() {
         dry_run="true"
         ;;
       --install)
-        install_launcher "false"
+        install_launcher "false" && configure_launcher_path
         exit $?
+        ;;
+      --install-and-run)
+        install_launcher "false" && configure_launcher_path || exit $?
+        shift
+        exec "$LAUNCHER_INSTALL_PATH" "$@"
         ;;
       --self-update)
         install_launcher "true"
