@@ -19,7 +19,8 @@ Click "Open in Cloud Shell" above, or paste these commands into
 
 ```bash
 curl -fsSLO "https://raw.githubusercontent.com/security-assignments/kali-launcher/refs/heads/main/kali-launcher.sh?$(date +%s)"
-bash kali-launcher.sh --install-and-run
+chmod +x kali-launcher.sh
+./kali-launcher.sh --install-and-run
 ```
 
 This installs a managed copy at `~/.local/bin/kali-launcher`, adds that
@@ -31,7 +32,8 @@ Or clone the repository if you want to inspect the script first:
 ```bash
 git clone https://github.com/security-assignments/kali-launcher
 cd kali-launcher
-bash kali-launcher.sh --install-and-run
+chmod +x kali-launcher.sh
+./kali-launcher.sh --install-and-run
 ```
 
 ## What it does

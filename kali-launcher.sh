@@ -8,7 +8,7 @@
 # checks instead.
 set -uo pipefail
 
-LAUNCHER_VERSION="0.3.4"
+LAUNCHER_VERSION="0.3.5"
 LAUNCHER_DOWNLOAD_URL="${LAUNCHER_DOWNLOAD_URL:-https://raw.githubusercontent.com/security-assignments/kali-launcher/refs/heads/main/kali-launcher.sh}"
 LAUNCHER_INSTALL_DIR="${LAUNCHER_INSTALL_DIR:-${HOME}/.local/bin}"
 LAUNCHER_INSTALL_PATH="${LAUNCHER_INSTALL_PATH:-${LAUNCHER_INSTALL_DIR}/kali-launcher}"
@@ -487,7 +487,7 @@ install_launcher() {
   local require_existing="${1:-false}"
   if [[ "$require_existing" == "true" && ! -f "$LAUNCHER_INSTALL_PATH" ]]; then
     err "No managed launcher is installed at '$LAUNCHER_INSTALL_PATH'."
-    echo "Run 'bash kali-launcher.sh --install' first." >&2
+    echo "Run './kali-launcher.sh --install' first." >&2
     return 1
   fi
 
