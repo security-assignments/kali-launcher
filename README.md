@@ -40,7 +40,8 @@ cd kali-launcher
    machine types in order (live data first, a built-in fallback list if
    that data can't be fetched), skipping ahead automatically on a
    capacity stockout, until one succeeds.
-5. Prints how to connect once your instance is running.
+5. Creates a 200 GB balanced persistent boot disk and prints how to connect
+   once your instance is running.
 
 ## Options
 

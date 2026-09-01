@@ -30,6 +30,7 @@ err() {
 IMAGE_PROJECT="security-assignments-kali"
 IMAGE_FAMILY="security-assignments-kali"
 INSTANCE_NAME="kali"
+BOOT_DISK_SIZE_GB=200
 
 # Parallel arrays: FALLBACK_ZONES[i] pairs with FALLBACK_MACHINE_TYPES[i].
 # Chosen from live kali-stockout-checker BigQuery data on 2026-07-14 — see
@@ -324,6 +325,7 @@ attempt_create() {
     --machine-type="$machine_type"
     --image="$image"
     --image-project="$IMAGE_PROJECT"
+    --boot-disk-size="${BOOT_DISK_SIZE_GB}GB"
     --boot-disk-type=pd-balanced
     --enable-nested-virtualization
     --quiet)
