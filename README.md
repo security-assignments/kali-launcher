@@ -12,22 +12,27 @@ capacity stockout. Replaces the manual GUI steps in Part 3.2–3.3 of the
 Google account you used to purchase class lab material access (see Part 1
 of the tutorial).
 
-## Run it
+## Install and run it
 
-Click "Open in Cloud Shell" above, or paste this into
-[Cloud Shell](https://console.cloud.google.com) (nothing to install —
-Cloud Shell already has everything this script needs):
+Click "Open in Cloud Shell" above, or paste these commands into
+[Cloud Shell](https://console.cloud.google.com):
 
 ```bash
-curl -fsSL "https://raw.githubusercontent.com/security-assignments/kali-launcher/main/launch-kali.sh?$(date +%s)" | bash
+curl -fsSLO "https://raw.githubusercontent.com/security-assignments/kali-launcher/main/kali-launcher.sh?$(date +%s)"
+bash kali-launcher.sh --install
+kali-launcher
 ```
 
-Or, to read the script before running it:
+This installs a managed copy at `~/.local/bin/kali-launcher`. The installer
+tells you exactly what to do if that directory is not already in `PATH`.
+
+Or clone the repository if you want to inspect the script first:
 
 ```bash
 git clone https://github.com/security-assignments/kali-launcher
 cd kali-launcher
-./launch-kali.sh
+bash kali-launcher.sh --install
+kali-launcher
 ```
 
 ## What it does
@@ -46,22 +51,23 @@ cd kali-launcher
 ## Options
 
 ```bash
-./launch-kali.sh --help          # show all options
-./launch-kali.sh --dry-run       # preview what would be created, without creating anything
-./launch-kali.sh --delete-only   # delete the existing instance and exit
-./launch-kali.sh --recreate      # delete the existing instance (if any), then create a new one
-./launch-kali.sh --image NAME    # use an exact image from the shared course project
-./launch-kali.sh --image-family FAMILY  # use the newest image in another family
+kali-launcher --help          # show all options
+kali-launcher --self-update   # update the launcher itself, not the Kali instance
+kali-launcher --dry-run       # preview what would be created, without creating anything
+kali-launcher --delete-only   # delete the existing instance and exit
+kali-launcher --recreate      # delete the existing instance (if any), then create a new one
+kali-launcher --image NAME    # use an exact image from the shared course project
+kali-launcher --image-family FAMILY  # use the newest image in another family
 ```
 
 `--delete-only` and `--recreate` ask for confirmation before deleting
 anything (it's a real, permanent instance deletion) — add `--force` to
 skip the prompt.
 
-If you're using the `curl | bash` one-liner, pass options after `-s --`:
+You can still run the current published version without installing it:
 
 ```bash
-curl -fsSL "https://raw.githubusercontent.com/security-assignments/kali-launcher/main/launch-kali.sh?$(date +%s)" | bash -s -- --dry-run
+curl -fsSL "https://raw.githubusercontent.com/security-assignments/kali-launcher/main/kali-launcher.sh?$(date +%s)" | bash -s -- --dry-run
 ```
 
 ## What it doesn't do

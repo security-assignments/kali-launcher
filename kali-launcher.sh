@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# launch-kali.sh — creates the course's Kali GCP instance, retrying across
+# kali-launcher.sh — creates the course's Kali GCP instance, retrying across
 # a shortlist of (zone, machine_type) candidates on stockout.
 #
 # No `set -e`: attempt_create()'s job is to let `gcloud create` fail and
@@ -7,6 +7,10 @@
 # stockout. Every failure path below is handled by explicit exit-code
 # checks instead.
 set -uo pipefail
+
+LAUNCHER_DOWNLOAD_URL="${LAUNCHER_DOWNLOAD_URL:-https://raw.githubusercontent.com/security-assignments/kali-launcher/main/kali-launcher.sh}"
+LAUNCHER_INSTALL_DIR="${LAUNCHER_INSTALL_DIR:-${HOME}/.local/bin}"
+LAUNCHER_INSTALL_PATH="${LAUNCHER_INSTALL_PATH:-${LAUNCHER_INSTALL_DIR}/kali-launcher}"
 
 # Colors only when stderr (where nearly all of this script's output goes)
 # is a real terminal, and NO_COLOR isn't set — this script is also meant
@@ -464,11 +468,76 @@ run_candidates() {
   return 1
 }
 
+download_launcher() {
+  local destination="$1"
+  if ! curl -fsSL --max-time 30 "${LAUNCHER_DOWNLOAD_URL}?$(date +%s)" -o "$destination"; then
+    err "Could not download the latest launcher. Your existing installation was not changed."
+    return 1
+  fi
+
+  if ! grep -q '^# kali-launcher\.sh ' "$destination" || ! bash -n "$destination"; then
+    err "The downloaded file did not pass launcher validation. Your existing installation was not changed."
+    return 1
+  fi
+}
+
+install_launcher() {
+  local require_existing="${1:-false}"
+  if [[ "$require_existing" == "true" && ! -f "$LAUNCHER_INSTALL_PATH" ]]; then
+    err "No managed launcher is installed at '$LAUNCHER_INSTALL_PATH'."
+    echo "Run 'bash kali-launcher.sh --install' first." >&2
+    return 1
+  fi
+
+  if ! mkdir -p "$LAUNCHER_INSTALL_DIR"; then
+    err "Could not create launcher directory '$LAUNCHER_INSTALL_DIR'."
+    return 1
+  fi
+
+  local temporary
+  temporary=$(mktemp "${LAUNCHER_INSTALL_DIR}/.kali-launcher.XXXXXX") || {
+    err "Could not create a temporary file in '$LAUNCHER_INSTALL_DIR'."
+    return 1
+  }
+
+  if ! download_launcher "$temporary"; then
+    rm -f "$temporary"
+    return 1
+  fi
+
+  chmod 755 "$temporary" || { rm -f "$temporary"; err "Could not make the launcher executable."; return 1; }
+
+  if [[ -f "$LAUNCHER_INSTALL_PATH" ]] && cmp -s "$temporary" "$LAUNCHER_INSTALL_PATH"; then
+    rm -f "$temporary"
+    echo "kali-launcher is already up to date." >&2
+    return 0
+  fi
+
+  if ! mv -f "$temporary" "$LAUNCHER_INSTALL_PATH"; then
+    rm -f "$temporary"
+    err "Could not install the launcher at '$LAUNCHER_INSTALL_PATH'."
+    return 1
+  fi
+
+  if [[ "$require_existing" == "true" ]]; then
+    echo "Updated kali-launcher at $LAUNCHER_INSTALL_PATH." >&2
+  else
+    echo "Installed kali-launcher at $LAUNCHER_INSTALL_PATH." >&2
+  fi
+
+  case ":$PATH:" in
+    *":${LAUNCHER_INSTALL_DIR}:"*) ;;
+    *)
+      echo "Add '$LAUNCHER_INSTALL_DIR' to PATH, then run: kali-launcher" >&2
+      ;;
+  esac
+}
+
 print_help() {
   # echo (a bash builtin), not `cat <<EOF` (an external command) — --help
   # must work even with a broken PATH, since it should be usable before
   # a student has confirmed anything about their environment is working.
-  echo "Usage: launch-kali.sh [OPTIONS]"
+  echo "Usage: kali-launcher [OPTIONS]"
   echo ""
   echo "Creates the security-assignments course's Kali GCP instance in the"
   echo "active gcloud project, retrying across a shortlist of zones and machine"
@@ -485,15 +554,19 @@ print_help() {
   echo "  --image NAME    Use an exact image from project '$IMAGE_PROJECT'."
   echo "  --image-family FAMILY"
   echo "                  Use the newest image in a different image family."
+  echo "  --install       Install the managed launcher at ~/.local/bin/kali-launcher"
+  echo "                  and exit."
+  echo "  --self-update   Update the managed launcher itself, then exit. Does not"
+  echo "                  update or modify the Kali instance."
   echo "  --help, -h      Show this help message and exit."
   echo ""
   echo "Examples:"
-  echo "  ./launch-kali.sh                     Create the instance (or report it already exists)"
-  echo "  ./launch-kali.sh --dry-run           Preview what would be created, without creating anything"
-  echo "  ./launch-kali.sh --delete-only       Delete the existing instance"
-  echo "  ./launch-kali.sh --recreate          Delete and recreate the instance"
-  echo "  ./launch-kali.sh --recreate --force  Delete and recreate without a confirmation prompt"
-  echo "  ./launch-kali.sh --image-family kali-fai-base-testing"
+  echo "  kali-launcher                     Create the instance (or report it already exists)"
+  echo "  kali-launcher --dry-run           Preview what would be created, without creating anything"
+  echo "  kali-launcher --delete-only       Delete the existing instance"
+  echo "  kali-launcher --recreate          Delete and recreate the instance"
+  echo "  kali-launcher --recreate --force  Delete and recreate without a confirmation prompt"
+  echo "  kali-launcher --self-update       Update this launcher, not the Kali instance"
 }
 
 main() {
@@ -513,6 +586,14 @@ main() {
         ;;
       --dry-run)
         dry_run="true"
+        ;;
+      --install)
+        install_launcher "false"
+        exit $?
+        ;;
+      --self-update)
+        install_launcher "true"
+        exit $?
         ;;
       --delete-only)
         delete_only="true"
